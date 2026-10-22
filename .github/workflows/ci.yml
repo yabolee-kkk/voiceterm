@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  hub:
+    name: hub (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Syntax check
+        run: npm run check
+      - name: Boot the hub and probe /ping
+        env:
+          HUB_PORT: 8097
+          BRIDGE_URL: ws://127.0.0.1:1/bridge/ws
+        run: |
+          mkdir -p "$HOME/.config/voice-hub"
+          node -e 'console.log(require("crypto").randomBytes(32).toString("hex"))' > "$HOME/.config/voice-hub/api-token"
+          node -e 'console.log(require("crypto").randomBytes(32).toString("hex"))' > "$HOME/.config/voice-hub/bridge-token"
+          chmod 600 "$HOME/.config/voice-hub/"*
+          node hub/server.js &
+          for i in $(seq 1 30); do sleep 1; curl -fsS localhost:8097/ping && break; done | tail -1
+
+  android:
+    name: app (assembleDebug)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v3
+      - name: Build debug APK
+        run: ./gradlew --no-daemon :app:assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: app/build/outputs/apk/debug/*.apk
