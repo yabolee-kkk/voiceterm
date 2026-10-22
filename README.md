@@ -7,6 +7,8 @@ Hold the input bar, talk, let go — the agent answers, out loud if you want.
   <img src="docs/images/chat.png" width="300" alt="VoiceTerm chat screen">
 </p>
 
+[English](README.md) | **[简体中文](README.zh-CN.md)**
+
 VoiceTerm is an Android app plus a small Node gateway (the **hub**, zero npm dependencies).
 The hub speaks the [cc-connect](https://github.com/chenhg5/cc-connect) **bridge protocol**, so the
 agents you already run behind cc-connect — Claude Code, Codex, OpenCode, Gemini CLI, anything with a
