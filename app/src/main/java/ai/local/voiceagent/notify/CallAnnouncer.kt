@@ -52,13 +52,13 @@ object CallAnnouncer {
                     round++
                     Log.i(TAG, "第 $round 遍：$text")
                     val t0 = android.os.SystemClock.elapsedRealtime()
+                    // 每一轮都先短铃 1.2 秒再念 —— 只靠通知渠道那一声「叮」不算振铃，
+                    // 而且每个渠道的声音只响一次，错过就再没有声音了。
+                    Notify.startRinging(app)
+                    delay(1200)
+                    Notify.stopRinging()
                     val spoke = speak(app, text)
-                    if (!spoke) {
-                        // TTS 不通就退回铃声（至少能听见）
-                        Notify.startRinging(app)
-                        delay(1500)
-                        Notify.stopRinging()
-                    }
+                    if (!spoke) Log.w(TAG, "TTS 没出声，本轮只有铃声")
                     val used = android.os.SystemClock.elapsedRealtime() - t0
                     val wait = (PERIOD_MS - used).coerceAtLeast(1200L)
                     if (isActive) delay(wait)

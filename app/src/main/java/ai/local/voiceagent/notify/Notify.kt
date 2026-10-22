@@ -145,6 +145,10 @@ object Notify {
             .addAction(0, "挂断", hangupIntent(ctx, tag))
             .build()
         val nm = ctx.getSystemService(NotificationManager::class.java) ?: return
+        // 先把同 tag 的旧通知撤掉再发：同一条通知「更新」时系统不会再弹全屏来电窗，
+        // 结果就是「上一回来电还躺在通知栏里，这一回只在那儿刷新，前台什么都不弹」。
+        // （1.0.1 及以前的真 bug，就是它）
+        nm.cancel(tag, tag.hashCode())
         nm.notify(tag, tag.hashCode(), n)
     }
 
@@ -186,14 +190,24 @@ object Notify {
 
     fun startRinging(ctx: Context) {
         stopRinging()
+        // 勿扰模式（zen != ALL）会把 STREAM_RING 整条压掉 —— 表现就是「只有人声、没有铃声」。
+        // 闹钟用途 USAGE_ALARM 在「仅重要」勿扰下仍被放行，所以勿扰时改走它。
+        val quiet = try {
+            val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            nm.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL
+        } catch (e: Exception) {
+            false
+        }
+        val usage = if (quiet) AudioAttributes.USAGE_ALARM else AudioAttributes.USAGE_NOTIFICATION_RINGTONE
+        Log.i(TAG, "振铃：勿扰=$quiet usage=$usage")
         try {
-            val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+            val uri = RingtoneManager.getDefaultUri(if (quiet) RingtoneManager.TYPE_ALARM else RingtoneManager.TYPE_RINGTONE)
                 ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
             val r = RingtoneManager.getRingtone(ctx.applicationContext, uri)
             if (r != null) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) r.isLooping = true
                 r.audioAttributes = AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                    .setUsage(usage)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build()
                 r.play()

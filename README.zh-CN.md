@@ -223,6 +223,7 @@ adb reverse tcp:8097 tcp:8097 # USB 调试时让手机直接用本机 hub
 调试版接受广播，可以从命令行驱动界面：
 
 ```bash
+adb shell am broadcast -a ai.local.voiceagent.DEBUG_FIRE_CALL    --es agent codex   # 触发一次来电提醒
 adb shell am broadcast -a ai.local.voiceagent.DEBUG_SEND_TEXT   --es text "hello"
 adb shell am broadcast -a ai.local.voiceagent.DEBUG_ADD_ATTACH  --es path /sdcard/x.pdf --es kind file
 adb shell am broadcast -a ai.local.voiceagent.DEBUG_PICK_FILES  --es paths "a.pdf,b.png"

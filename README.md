@@ -236,6 +236,7 @@ adb reverse tcp:8097 tcp:8097 # use the hub from the device over USB
 Debug broadcasts (debug builds only) let you drive the UI from the command line:
 
 ```bash
+adb shell am broadcast -a ai.local.voiceagent.DEBUG_FIRE_CALL    --es agent codex   # 触发一次来电提醒
 adb shell am broadcast -a ai.local.voiceagent.DEBUG_SEND_TEXT   --es text "hello"
 adb shell am broadcast -a ai.local.voiceagent.DEBUG_ADD_ATTACH  --es path /sdcard/x.pdf --es kind file
 adb shell am broadcast -a ai.local.voiceagent.DEBUG_PICK_FILES  --es paths "a.pdf,b.png"

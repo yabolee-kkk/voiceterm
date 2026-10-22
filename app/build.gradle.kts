@@ -12,8 +12,8 @@ android {
         applicationId = "ai.local.voiceagent"
         minSdk = 26
         targetSdk = 34
-        versionCode = 101
-        versionName = "1.0.1"
+        versionCode = 102
+        versionName = "1.0.2"
         // 服务地址只给默认值；令牌一律不注入构建产物（见 docs/04 §4 安全红线）
         // 默认服务地址：编译时可用 -PHUB_URL=http://<你的电脑IP>:8097 覆盖。
         // 默认值给 127.0.0.1，配合 `adb reverse tcp:8097 tcp:8097` 就能在本机直接调试。

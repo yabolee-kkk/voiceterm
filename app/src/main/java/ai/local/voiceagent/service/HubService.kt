@@ -2,7 +2,9 @@ package ai.local.voiceagent.service
 
 import android.app.NotificationManager
 import android.app.Service
+import android.content.Context
 import android.content.Intent
+import ai.local.voiceagent.BuildConfig
 import android.os.IBinder
 import android.util.Log
 import ai.local.voiceagent.App
@@ -45,6 +47,20 @@ class HubService : Service() {
             App.engine.start()
         } else {
             Log.w(TAG, "还没配置地址/令牌，只保活不连")
+        }
+
+        // 调试：adb shell am broadcast -a ai.local.voiceagent.DEBUG_FIRE_CALL --es agent codex --es text "任务完成"
+        // 用来复现「锁屏时会不会弹来电窗」「有没有铃声」，比真跑一轮 Agent 快得多
+        if (BuildConfig.DEBUG) {
+            registerReceiver(object : android.content.BroadcastReceiver() {
+                override fun onReceive(c: android.content.Context, i: Intent) {
+                    val agent = i.getStringExtra("agent") ?: "codex"
+                    val text = i.getStringExtra("text") ?: "任务完成"
+                    val need = i.getBooleanExtra("needAction", false)
+                    Log.i(TAG, "DEBUG_FIRE_CALL agent=$agent needAction=$need")
+                    scope.launch { alert(agent, null, text, need) }
+                }
+            }, android.content.IntentFilter("ai.local.voiceagent.DEBUG_FIRE_CALL"), Context.RECEIVER_EXPORTED)
         }
 
         // 在线数量 → 改常驻通知的文字
@@ -125,6 +141,20 @@ class HubService : Service() {
             this, "agent-$agentId", title, body.take(300), sid,
             speak = script, agent = agentId,
         )
+        // App 正在前台时系统不会弹全屏来电窗（FSI 只在锁屏/后台生效），
+        // 这种情况自己把来电窗抬到前面，否则就只剩通知栏里那一条。
+        if (App.appVisible) {
+            try {
+                startActivity(
+                    ai.local.voiceagent.ui.call.CallActivity.intent(
+                        this, sid, "agent-$agentId", agentId, title, script,
+                    )
+                )
+                Log.i(TAG, "App 在前台，直接抬起来电窗")
+            } catch (e: Exception) {
+                Log.w(TAG, "抬起来电窗失败：${e.message}")
+            }
+        }
         // 语音通报：不接听就反复念这件事，接听/挂断/进会话立刻停
         ai.local.voiceagent.notify.CallAnnouncer.start(this, script)
     }

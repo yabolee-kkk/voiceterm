@@ -2,6 +2,24 @@
 
 All dates are local; versions follow `MAJOR.MINOR.PATCH`.
 
+## 1.0.2 — 2026-10-22
+
+The task-completion / approval call actually reaches you now.
+
+- **Fixed: a second alert never came to the front.** The call notification reused one tag, so a
+  follow-up alert only *updated* the existing notification — and Android never fires a full-screen
+  intent for an update. The old one is now cancelled first, so every alert truly re-alerts.
+- **Fixed: no ringtone in Do Not Disturb.** The `call` channel does not bypass DND and its sound
+  rides the ring stream, which DND mutes (TTS kept talking because it uses the media stream).
+  Ringing now detects DND and switches to `USAGE_ALARM` + the alarm tone, which priority-only DND
+  still lets through. Every announcement round also starts with a real 1.2 s ring now.
+- **Fixed: no call window while the app is in the foreground.** Android only shows a full-screen
+  intent when the device is locked or the app is backgrounded. When the app is visible we start the
+  call screen ourselves.
+- **New (debug builds):** `am broadcast -a ai.local.voiceagent.DEBUG_FIRE_CALL --es agent codex`
+  fires a call alert without running a real agent round. Do not put spaces in the `--es` values —
+  `adb shell` treats the rest as a package filter and the broadcast is silently dropped.
+
 ## 1.0.1 — 2026-10-22
 
 * Fixed: after dictating, the voice bar (`cancel / send / send-as-voice`) stayed pinned above the
