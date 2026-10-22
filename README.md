@@ -31,8 +31,37 @@ busy — driving, walking, cooking, half-asleep at 1am — and you would rather 
 | Output | read text, tap to hear | tap once, every reply is spoken, barge-in supported |
 | Latency | O(seconds) through a third-party server | LAN-first, ~30 ms to your own box |
 | Control | someone else's app, someone else's rules | your device, your tokens, no telemetry |
+| When it needs you | one more unread message you scroll past | it **rings like a phone call** — ringtone, vibration, spoken out loud, until you answer |
 
 They compose well: install cc-connect, use it for typing, install VoiceTerm for talking.
+
+## It rings when the agent needs you
+
+This is the part an IM bot structurally cannot do: an IM notification is one more silent line in a
+list you scroll past. VoiceTerm escalates — and only for the two moments that actually block you:
+
+| Trigger | What happens |
+|---|---|
+| **The agent finished the task** | full-screen "incoming call" (also from the lock screen), ringtone, looping vibration, and a spoken line: *"Sir, the task is done, please review."* |
+| **The agent is waiting for your approval** | same call-style alert, title `«agent» needs your confirmation`, spoken line: *"Sir, there is a task waiting for your approval."* |
+
+```text
+Every 5.5 s  speak the line again (TTS); if TTS is unreachable it falls back to the ringtone
+Up to 20x    ~2 minutes, then silence; the notification text stays until you deal with it
+Answer       "接听" opens the call screen and the agent starts talking; "挂断" stops it
+Interrupts   answering, hanging up, opening that session, or the service stopping — all stop it instantly
+Stays quiet  ordinary replies get one normal notification chime;
+             the phone that did NOT ask stays silent (reply ownership);
+             if you are already looking at that session, nothing rings at all
+```
+
+Put the phone in your pocket and go do something else: it *calls* you when your agent is done or
+stuck, instead of hoping you notice a badge.
+
+The spoken lines are Chinese by default (*"主人，我的任务完成了，请您验收。"* / *"主人，有任务需要你审批了。"*);
+change the wording or the language in `HubService.kt` (`val script = when { … }`, one line per case).
+The alert volume follows your phone's ring volume; the whole behaviour can be switched off by
+disabling the "任务完成 / 待审批" notification channel in Android settings.
 
 ## Features
 
@@ -40,6 +69,8 @@ They compose well: install cc-connect, use it for typing, install VoiceTerm for 
   speak. Public link: one-shot transcription on release (fewer round trips).
 - **Speak answers** — every reply has a 🔊 button; server-side TTS, streamed playback, tap to stop.
 - **Call mode** — full-duplex: continuous listening, streaming speech, interrupt by talking.
+- **Calls you when it matters** — task done / approval needed rings like an incoming call and
+  speaks the reason; ordinary replies stay quiet.
 - **All agents, one list** — each cc-connect `[[projects]]` entry appears automatically.
 - **Sessions** — one main line per agent plus named threads; the first sentence becomes the name.
 - **Rich replies** — markdown, cards with buttons, images (pinch-zoom full screen), files handed to
