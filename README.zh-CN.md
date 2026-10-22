@@ -1,7 +1,7 @@
 # VoiceTerm
 
-**给你自己机器上的 AI Agent 配一个语音终端。**
-按住输入栏说话，松手，Agent 回答 —— 想听就让它念出来。
+**一个可以给你打电话的语音 AI Agent 终端。**
+按住输入栏说话，松手，Agent 回答；它干完活或等你审批时，会像来电一样响铃并念给你听。
 
 <p align="center">
   <img src="docs/images/chat.png" width="300" alt="VoiceTerm 聊天界面">

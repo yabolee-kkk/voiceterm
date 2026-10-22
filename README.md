@@ -1,7 +1,8 @@
 # VoiceTerm
 
-**A voice-first mobile terminal for the AI agents running on your own machine.**
-Hold the input bar, talk, let go — the agent answers, out loud if you want.
+**A voice AI agent terminal that can call you.**
+Hold the input bar and talk; the agent answers out loud. When it finishes a task or needs your
+approval, it rings like an incoming call and tells you why.
 
 <p align="center">
   <img src="docs/images/chat.png" width="300" alt="VoiceTerm chat screen">
