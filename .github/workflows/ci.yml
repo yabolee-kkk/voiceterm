@@ -40,7 +40,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
+      # GitHub 的 ubuntu runner 自带 Android SDK 与 build-tools，不需要再装
+      # （android-actions/setup-android@v3 会去拉已经被移除的 'tools' 包，直接失败）
+      - name: Where is the SDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          ls "$ANDROID_HOME/platforms" | tail -3
       - uses: gradle/actions/setup-gradle@v3
       - name: Build debug APK
         run: ./gradlew --no-daemon :app:assembleDebug
