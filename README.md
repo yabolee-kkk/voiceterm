@@ -5,7 +5,12 @@ Hold the input bar and talk; the agent answers out loud. When it finishes a task
 approval, it rings like an incoming call and tells you why.
 
 <p align="center">
-  <img src="docs/images/chat.png" width="300" alt="VoiceTerm chat screen">
+  <img src="docs/images/call.png" width="290" alt="VoiceTerm rings like a call when the agent is done">
+  <img src="docs/images/chat.png" width="290" alt="VoiceTerm chat screen">
+</p>
+
+<p align="center">
+  <sub><b>Left:</b> the agent calls you when a task is done or needs approval. <b>Right:</b> hold to talk, and it answers.</sub>
 </p>
 
 [English](README.md) | **[简体中文](README.zh-CN.md)**

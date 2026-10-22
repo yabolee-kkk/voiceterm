@@ -4,7 +4,12 @@
 按住输入栏说话，松手，Agent 回答；它干完活或等你审批时，会像来电一样响铃并念给你听。
 
 <p align="center">
-  <img src="docs/images/chat.png" width="300" alt="VoiceTerm 聊天界面">
+  <img src="docs/images/call.png" width="290" alt="任务完成时它像来电一样打给你">
+  <img src="docs/images/chat.png" width="290" alt="VoiceTerm 聊天界面">
+</p>
+
+<p align="center">
+  <sub><b>左：</b>干完活或等你审批时，它会像来电一样打给你。<b>右：</b>按住说话，它开口回答。</sub>
 </p>
 
 **简体中文** | [English](README.md)
