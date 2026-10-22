@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 项目名（设置页、关于、系统应用信息里显示这个名字） -->
+    <string name="app_name">VoiceTerm</string>
+    <!-- 桌面图标下面的名字（太长会被系统截断，这里用短名） -->
+    <string name="app_short">语音终端</string>
+</resources>

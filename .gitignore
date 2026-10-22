@@ -1,0 +1,17 @@
+.secrets/
+*.key
+*.pem
+api-key*
+*.apk
+*.aab
+.gradle/
+build/
+node_modules/
+.idea/
+local.properties
+.env
+*.keystore
+*.log
+
+# 内网分发的 APK 产物，不进仓库
+dist/

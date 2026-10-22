@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  明文 http（局域网自建 hub）需要显式放行，这里默认只放行本机回环和模拟器。
+  把你在家/公司跑 hub 的那台电脑的局域网 IP 加进下面的 domain-config 即可，
+  例如：<domain includeSubdomains="false">192.0.2.10</domain>
+  公网访问请一律用 https（CF 隧道 / 反代），不要放行公网明文。
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- 打开附件时把字节写到 cache/open/ 再交给系统应用 -->
+    <cache-path name="open" path="open/" />
+    <files-path name="attach" path="attach/" />
+</paths>

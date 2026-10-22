@@ -1,0 +1,16 @@
+{
+  "name": "voiceterm-hub",
+  "version": "1.0.1",
+  "private": true,
+  "description": "VoiceTerm hub — bridges a phone voice UI to cc-connect (and local CLI agents) over the cc-connect bridge protocol",
+  "main": "hub/server.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node hub/server.js",
+    "selftest": "node tools/selftest.js",
+    "check": "node --check hub/server.js && node --check hub/adapter/hub.js && node --check hub/adapter/cc-bridge.js"
+  },
+  "license": "Apache-2.0"
+}
