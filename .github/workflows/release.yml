@@ -1,0 +1,52 @@
+name: Release APK
+
+# 打 tag 就自动构建 APK 并挂到 Release 上，避免出现「代码已修好、下载的还是旧包」。
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build an APK for (must already exist)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    name: build and attach APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v3
+      - name: Build debug APK
+        run: ./gradlew --no-daemon :app:assembleDebug
+      - name: Read version name
+        id: ver
+        run: |
+          NAME=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts | head -1)
+          echo "name=${NAME:-dev}" >> "$GITHUB_OUTPUT"
+      - name: Attach APK to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          files: app/build/outputs/apk/debug/*.apk
+          fail_on_unmatched_files: true
+          generate_release_notes: false
+      - name: Rename the uploaded asset to VoiceTerm-<version>-debug.apk
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+          VER: ${{ steps.ver.outputs.name }}
+        run: |
+          gh api "repos/${{ github.repository }}/releases/tags/$TAG" --jq '.assets[] | "\(.id) \(.name)"' |
+          while read -r id name; do
+            gh api -X PATCH "repos/${{ github.repository }}/releases/assets/$id" -f name="VoiceTerm-${VER}-debug.apk" >/dev/null
+          done

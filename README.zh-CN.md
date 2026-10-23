@@ -14,6 +14,10 @@
 
 **简体中文** | [English](README.md)
 
+> **想在手机上先试试：** [下载 1.0.2 debug APK](https://github.com/yabolee-kkk/voiceterm/releases/latest)
+> （minSdk 26，约 10 MB，Apache-2.0）。手机端一步装好；hub 和 cc-connect 仍要跑在你自己机器上 ——
+> 见[快速开始](#快速开始)。
+
 VoiceTerm = 一个 Android 应用 + 一个小小的 Node 网关（**hub**，零 npm 依赖）。
 hub 说的是 [cc-connect](https://github.com/chenhg5/cc-connect) 官方文档里的 **bridge 协议**，
 所以你已经在 cc-connect 后面跑着的 Agent —— Claude Code、Codex、OpenCode、Gemini CLI，
@@ -204,7 +208,7 @@ VoiceTerm **不是** cc-connect 的分支，也**不打包**它。它是一个*�
 
 ## 状态
 
-`1.0.1` —— 两台手机（Android 14 / Android 9）、五个 Agent 日常在用。变更见
+`1.0.2` —— 两台手机（Android 14 / Android 9）、五个 Agent 日常在用。变更见
 [CHANGELOG.md](CHANGELOG.md)。已知限制：
 
 * 公网链路（Cloudflare 免费隧道）每次请求 1–3 秒；局域网才是好路径。

@@ -15,6 +15,10 @@ approval, it rings like an incoming call and tells you why.
 
 [English](README.md) | **[简体中文](README.zh-CN.md)**
 
+> **Try it on your phone:** [download the 1.0.2 debug APK](https://github.com/yabolee-kkk/voiceterm/releases/latest)
+> (minSdk 26, ~10 MB, Apache-2.0). The phone side is one tap; you still need the hub and
+> cc-connect on your own box — see [Quick start](#quick-start).
+
 VoiceTerm is an Android app plus a small Node gateway (the **hub**, zero npm dependencies).
 The hub speaks the [cc-connect](https://github.com/chenhg5/cc-connect) **bridge protocol**, so the
 agents you already run behind cc-connect — Claude Code, Codex, OpenCode, Gemini CLI, anything with a
@@ -217,7 +221,7 @@ If cc-connect ever grows built-in voice, this project stays useful as the refere
 
 ## Status
 
-`1.0.1` — used daily on two phones (Android 14 / Android 9) against five agents. See
+`1.0.2` — used daily on two phones (Android 14 / Android 9) against five agents. See
 [CHANGELOG.md](CHANGELOG.md). Known limitations:
 
 * The public-link path pays 1–3 s per request on a Cloudflare free tunnel; LAN is the good path.
