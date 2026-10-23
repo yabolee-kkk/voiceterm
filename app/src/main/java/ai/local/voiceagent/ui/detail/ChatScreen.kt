@@ -40,6 +40,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -943,20 +944,6 @@ fun ChatScreen(sessionId: Long, onBack: () -> Unit) {
                 vm.sendFile(android.net.Uri.fromFile(f))
             }
         }
-        // 调试注入：adb broadcast 一段文字 → 走真实的"发消息"链路（自动化/截图用）
-        val textRecv = object : android.content.BroadcastReceiver() {
-            override fun onReceive(c: android.content.Context?, i: android.content.Intent?) {
-                val msg = i?.getStringExtra("text") ?: return
-                if (msg.isBlank()) return
-                android.util.Log.i("ChatScreen", "注入文字：${msg.take(20)}")
-                vm.send(msg, fromVoice = false)
-            }
-        }
-        ContextCompat.registerReceiver(
-            ctx, textRecv,
-            android.content.IntentFilter("ai.local.voiceagent.DEBUG_SEND_TEXT"),
-            ContextCompat.RECEIVER_EXPORTED,
-        )
         ContextCompat.registerReceiver(
             ctx, recv,
             android.content.IntentFilter("ai.local.voiceagent.DEBUG_SEGMENT"),
@@ -978,7 +965,6 @@ fun ChatScreen(sessionId: Long, onBack: () -> Unit) {
             ContextCompat.RECEIVER_EXPORTED,
         )
         onDispose {
-            try { ctx.unregisterReceiver(textRecv) } catch (_: Exception) {}
             try { ctx.unregisterReceiver(recv) } catch (_: Exception) {}
             try { ctx.unregisterReceiver(fileRecv) } catch (_: Exception) {}
             try { ctx.unregisterReceiver(pickRecv) } catch (_: Exception) {}
@@ -1060,16 +1046,35 @@ fun ChatScreen(sessionId: Long, onBack: () -> Unit) {
                 },
                 actions = {
                     // 全双工通话：点一下进入连续对话，再点挂断
-                    Text(
-                        text = if (dialog.state == ChatViewModel.DialogState.OFF) "📞 通话" else "📞 通话中",
-                        fontSize = 12.sp,
-                        color = if (dialog.state == ChatViewModel.DialogState.OFF)
-                            MaterialTheme.colorScheme.onSurfaceVariant
+                    // 做成一枚彩色胶囊（原来只是一行 12sp 灰字，拇指很难点中、也看不见）
+                    val inCall = dialog.state != ChatViewModel.DialogState.OFF
+                    Surface(
+                        onClick = { if (configured) vm.toggleDialog() },
+                        enabled = configured,
+                        shape = RoundedCornerShape(50),
+                        color = if (inCall) MaterialTheme.colorScheme.error
                         else MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .clickable(enabled = configured) { vm.toggleDialog() }
-                            .padding(horizontal = 8.dp, vertical = 8.dp),
-                    )
+                        contentColor = if (inCall) MaterialTheme.colorScheme.onError
+                        else MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.padding(end = 10.dp),
+                    ) {
+                        Row(
+                            Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                Icons.Default.Phone,
+                                contentDescription = "通话",
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                if (inCall) "通话中" else "通话",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,

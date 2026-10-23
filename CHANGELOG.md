@@ -2,6 +2,22 @@
 
 All dates are local; versions follow `MAJOR.MINOR.PATCH`.
 
+## 1.0.3 — 2026-10-23
+
+Markdown that is actually readable on a phone.
+
+- **Code blocks are syntax-highlighted** (keywords / strings / comments / numbers / function names /
+  annotations) with a built-in tokenizer — no extra dependency. Language hint from the fence, with
+  sensible comment-token handling per language (`#`, `--`, `//`).
+- **Copy button on every code block** (⧉ 复制 in the top-right corner, copies the code only, with a
+  toast telling you how many characters went to the clipboard).
+- **Tables render as a panel instead of raw pipes.** Wide two-column tables with long descriptions
+  switch to a stacked list (name on its own line, description wrapped at full width); narrow tables
+  stay side-by-side with aligned columns, a dashed header rule, CJK-aware width and no orphaned
+  punctuation at line starts.
+- **The in-chat call button is now a filled pill** (phone icon + label, primary when idle, error-red
+  while in a call) instead of a 12 sp grey text link in the app bar.
+
 ## 1.0.2 — 2026-10-22
 
 The task-completion / approval call actually reaches you now.
