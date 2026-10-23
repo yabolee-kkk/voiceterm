@@ -5,17 +5,19 @@ Hold the input bar and talk; the agent answers out loud. When it finishes a task
 approval, it rings like an incoming call and tells you why.
 
 <p align="center">
-  <img src="docs/images/call.png" width="290" alt="VoiceTerm rings like a call when the agent is done">
+  <img src="docs/images/call.gif" width="300" alt="VoiceTerm rings like a call when the agent is done">
   <img src="docs/images/chat.png" width="290" alt="VoiceTerm chat screen">
 </p>
 
 <p align="center">
-  <sub><b>Left:</b> the agent calls you when a task is done or needs approval. <b>Right:</b> hold to talk, and it answers.</sub>
+  <sub><b>Left:</b> task done → it rings like a call and says why. <b>Right:</b> hold to talk, and it answers.<br>
+  ▶ <a href="https://github.com/yabolee-kkk/voiceterm/releases/download/v1.0.4/voiceterm-demo-9x16.mp4">30-second demo, with sound</a>
+  (<a href="https://github.com/yabolee-kkk/voiceterm/releases/download/v1.0.4/voiceterm-demo-16x9.mp4">16:9</a>) — recorded on a real phone, not a mockup.</sub>
 </p>
 
 [English](README.md) | **[简体中文](README.zh-CN.md)**
 
-> **Try it on your phone:** [download the 1.0.2 debug APK](https://github.com/yabolee-kkk/voiceterm/releases/latest)
+> **Try it on your phone:** [download the 1.0.4 debug APK](https://github.com/yabolee-kkk/voiceterm/releases/latest)
 > (minSdk 26, ~10 MB, Apache-2.0). The phone side is one tap; you still need the hub and
 > cc-connect on your own box — see [Quick start](#quick-start).
 
@@ -221,7 +223,7 @@ If cc-connect ever grows built-in voice, this project stays useful as the refere
 
 ## Status
 
-`1.0.2` — used daily on two phones (Android 14 / Android 9) against five agents. See
+`1.0.4` — used daily on two phones (Android 14 / Android 9) against five agents. See
 [CHANGELOG.md](CHANGELOG.md). Known limitations:
 
 * The public-link path pays 1–3 s per request on a Cloudflare free tunnel; LAN is the good path.

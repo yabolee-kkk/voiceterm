@@ -4,17 +4,19 @@
 按住输入栏说话，松手，Agent 回答；它干完活或等你审批时，会像来电一样响铃并念给你听。
 
 <p align="center">
-  <img src="docs/images/call.png" width="290" alt="任务完成时它像来电一样打给你">
+  <img src="docs/images/call.gif" width="300" alt="任务完成时它像来电一样打给你">
   <img src="docs/images/chat.png" width="290" alt="VoiceTerm 聊天界面">
 </p>
 
 <p align="center">
-  <sub><b>左：</b>干完活或等你审批时，它会像来电一样打给你。<b>右：</b>按住说话，它开口回答。</sub>
+  <sub><b>左：</b>干完活 → 像来电一样响铃并念出原因。<b>右：</b>按住说话，它开口回答。<br>
+  ▶ <a href="https://github.com/yabolee-kkk/voiceterm/releases/download/v1.0.4/voiceterm-demo-9x16.mp4">30 秒演示（带声音）</a>
+  （<a href="https://github.com/yabolee-kkk/voiceterm/releases/download/v1.0.4/voiceterm-demo-16x9.mp4">16:9 横版</a>）—— 真机录制，不是画的。</sub>
 </p>
 
 **简体中文** | [English](README.md)
 
-> **想在手机上先试试：** [下载 1.0.2 debug APK](https://github.com/yabolee-kkk/voiceterm/releases/latest)
+> **想在手机上先试试：** [下载 1.0.4 debug APK](https://github.com/yabolee-kkk/voiceterm/releases/latest)
 > （minSdk 26，约 10 MB，Apache-2.0）。手机端一步装好；hub 和 cc-connect 仍要跑在你自己机器上 ——
 > 见[快速开始](#快速开始)。
 
@@ -208,7 +210,7 @@ VoiceTerm **不是** cc-connect 的分支，也**不打包**它。它是一个*�
 
 ## 状态
 
-`1.0.2` —— 两台手机（Android 14 / Android 9）、五个 Agent 日常在用。变更见
+`1.0.4` —— 两台手机（Android 14 / Android 9）、五个 Agent 日常在用。变更见
 [CHANGELOG.md](CHANGELOG.md)。已知限制：
 
 * 公网链路（Cloudflare 免费隧道）每次请求 1–3 秒；局域网才是好路径。
