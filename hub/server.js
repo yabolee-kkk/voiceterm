@@ -1,5 +1,5 @@
 'use strict';
-// voiceterm hub：手机侧入口（自有协议）⇄ cc-connect bridge protocol
+// voice-hub：手机侧入口（自有协议）⇄ cc-connect bridge protocol
 const http = require('http');
 const { spawn } = require('child_process');
 const crypto = require('crypto');
@@ -14,6 +14,31 @@ const { fixTerms } = require('./lib/asr-fix');
 const hub = new AgentHub();
 const subscribers = new Map();   // agentId -> Set<res>
 const pending = new Map();       // replyCtx -> {agentId, msgId, at}
+
+// 断线期间不能丢事件：done/push/card/buttons/attachment 落一个「待投递」环形缓冲。
+// 手机 SSE 重连时带 ?since=<seq>，把漏掉的按顺序补投一遍。
+// 只补投"有游标"的连接：新装的手机/刚删过会话的手机不带 since，避免把旧消息重新灌进去。
+const outbox = new Map();        // agentId -> [{seq, event, data, at}]
+let outboxSeq = 0;
+const OUTBOX_MAX = 200;          // 每个 Agent 最多留 200 条
+const OUTBOX_TTL = 6 * 3600e3;   // 6 小时
+const DURABLE_EVENTS = new Set(['done', 'push', 'card', 'buttons', 'attachment', 'clear_preview']);
+
+// 长任务（跑十几分钟很正常）不能因为 5 分钟没回话就把 pending 清掉：
+// 清早了，真正的回答会被当成"非请求应答"降级成 push，手机端体验就是"答了但我没收到"。
+const PENDING_TTL = 30 * 60 * 1000;
+
+/** 记一条可补投事件，返回 seq（不补投的事件返回 0） */
+function remember(agentId, event, data) {
+  if (!DURABLE_EVENTS.has(event)) return 0;
+  const seq = ++outboxSeq;
+  data.seq = seq;
+  const buf = outbox.get(agentId) || [];
+  buf.push({ seq, event, data, at: Date.now() });
+  while (buf.length > OUTBOX_MAX) buf.shift();
+  outbox.set(agentId, buf);
+  return seq;
+}
 const recent = [];               // 最近帧（调试用，最多 50 条）
 
 function json(res, code, obj) {
@@ -88,12 +113,20 @@ function readRaw(req, limit = 8e6) {
 }
 
 function sseWrite(res, event, data) {
-  try { res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`); } catch {}
+  try {
+    // 带 seq 的事件用 SSE 的 id: 字段下发，客户端拿它当断线续传的游标
+    const id = data && data.seq ? `id: ${data.seq}\n` : '';
+    res.write(`${id}event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  } catch {}
 }
 
 function broadcast(agentId, event, data) {
+  const seq = remember(agentId, event, data);   // 先记账：没有订阅者也不丢
   const subs = subscribers.get(agentId);
-  if (!subs || !subs.size) { log.dbg(`[${agentId}] 无订阅者，${event} 记入 recent`); return; }
+  if (!subs || !subs.size) {
+    log.info(`[${agentId}] 无订阅者，${event}${seq ? ` seq=${seq} 已入待投递` : ' 丢弃（瞬时事件）'}`);
+    return;
+  }
   for (const res of subs) sseWrite(res, event, data);
 }
 
@@ -113,7 +146,7 @@ function isAgentNotice(text) {
 }
 
 
-// ---------- 本地 CLI Agent（如 Hermes CLI）----------
+// ---------- 本地 CLI Agent（Hermes / .31 的 Pi）----------
 const LOCAL = new Map((cfg.localAgents || []).map((a) => [a.id, a]));
 
 /**
@@ -327,7 +360,7 @@ const server = http.createServer(async (req, res) => {
   // 探线用：带上身份，App 才不会把「别的服务回 200」当成 hub 通（端口填错时踩过）
   if (path === '/ping') {
     res.setHeader('access-control-allow-origin', '*');
-    return json(res, 200, { ok: true, hub: 'voiceterm', port: cfg.port });
+    return json(res, 200, { ok: true, hub: 'voice-hub-v2', port: cfg.port });
   }
 
   if (!auth(req, res)) return;
@@ -339,6 +372,8 @@ const server = http.createServer(async (req, res) => {
       agents: hub.status(),
       subscribers: [...subscribers.entries()].map(([k, v]) => [k, v.size]),
       pending: pending.size,
+    outboxSeq,
+    outbox: Object.fromEntries([...outbox.entries()].map(([k, v]) => [k, v.length])),
       recent,
     });
   }
@@ -360,7 +395,7 @@ const server = http.createServer(async (req, res) => {
     const msgId = 'm' + Date.now() + '-' + crypto.randomBytes(3).toString('hex');
     try { hub.require(agentId); } catch (e) { return json(res, 404, { error: e.message }); }
 
-    // 本地 CLI Agent（如 Hermes CLI）：hub 直接 spawn，不经 bridge
+    // 本地 CLI Agent（Hermes / .31 的 Pi）：hub 直接跑，不经 bridge
     if (LOCAL.has(agentId)) {
       pending.set(msgId, { agentId, msgId, at: Date.now(), local: true });
       runLocalAgent(LOCAL.get(agentId), { agentId, text, sessionName: name, msgId });
@@ -391,6 +426,17 @@ const server = http.createServer(async (req, res) => {
     if (!subscribers.has(agentId)) subscribers.set(agentId, new Set());
     subscribers.get(agentId).add(res);
     log.info(`[${agentId}] SSE +1（共 ${subscribers.get(agentId).size}）`);
+
+    // 断线续传：手机带着上次收到的 seq 回来，把这期间完成的事件按顺序补投。
+    // 没有 since = 新装的手机 / 刚清过数据，不补投（否则旧消息会重新灌进会话）。
+    const sinceRaw = new URL(req.url, 'http://x').searchParams.get('since')
+      || req.headers['last-event-id'] || '';
+    const since = Number(sinceRaw) || 0;
+    if (since > 0) {
+      const miss = (outbox.get(agentId) || []).filter((e) => e.seq > since);
+      for (const e of miss) sseWrite(res, e.event, e.data);
+      if (miss.length) log.info(`[${agentId}] SSE 补投 ${miss.length} 条（since=${since}）`);
+    }
     const hb = setInterval(() => { try { res.write(': hb\n\n'); } catch {} }, 15000);
     if (hb.unref) hb.unref();
     let cleaned = false;
@@ -605,8 +651,12 @@ const server = http.createServer(async (req, res) => {
 // 超时清理：5 分钟没有应答的请求视为丢失（cc-connect 重投时会走 push 分支）
 setInterval(() => {
   const now = Date.now();
+  for (const [agentId, buf] of outbox) {
+    const keep = buf.filter((e) => now - e.at <= OUTBOX_TTL);
+    if (keep.length) outbox.set(agentId, keep); else outbox.delete(agentId);
+  }
   for (const [ctx, v] of pending) {
-    if (now - v.at > 300000) { pending.delete(ctx); log.warn(`pending 超时清理 ${ctx}`); }
+    if (now - v.at > PENDING_TTL) { pending.delete(ctx); log.warn(`pending 超时清理 ${ctx}`); }
   }
 }, 60000).unref();
 
@@ -614,7 +664,7 @@ hub.start();                       // 先建 link，再挂回调（link 连接�
 hub.onFrame(onFrame);
 hub.onUpstreamError((f) => log.warn('上游错误帧', f));
 server.listen(cfg.port, cfg.bind, () => {
-  log.info(`voiceterm hub 监听 :${cfg.port}  Agent: ${cfg.agents.join(', ')}`);
+  log.info(`voice-hub 监听 :${cfg.port}  Agent: ${cfg.agents.join(', ')}`);
 });
 
 function shutdown(sig) {

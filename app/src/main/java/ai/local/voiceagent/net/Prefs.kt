@@ -15,7 +15,7 @@ class Prefs(ctx: Context) {
         get() = sp.getString(KEY_BASE, null)?.takeIf { it.isNotBlank() } ?: BuildConfig.DEFAULT_BASE_URL
         set(v) = sp.edit().putString(KEY_BASE, v.trim().trimEnd('/')).apply()
 
-    /** 公网地址（如 https://hub.example.com，走 CF 隧道或反代）；留空 = 只用局域网 */
+    /** 公网地址（CF 隧道，如 https://voice.borong.de5.net）；留空 = 只用局域网 */
     var publicUrl: String
         get() = sp.getString(KEY_PUBLIC, "") ?: ""
         set(v) = sp.edit().putString(KEY_PUBLIC, v.trim().trimEnd('/')).apply()
@@ -51,6 +51,16 @@ class Prefs(ctx: Context) {
     var lastSessionId: Long
         get() = sp.getLong(KEY_LAST_SESSION, 0L)
         set(v) = sp.edit().putLong(KEY_LAST_SESSION, v).apply()
+
+    /**
+     * SSE 断线续传游标（按 Agent 各存一份）。
+     * 收到带 id: 的事件就往前挪；重连时把它作为 ?since= 带给 hub，
+     * hub 把这期间完成的事件补投回来 —— 手机上就不会出现「任务其实跑完了但我这没显示」。
+     */
+    fun cursorOf(agent: String): Long = sp.getLong("cursor_$agent", 0L)
+    fun setCursor(agent: String, seq: Long) {
+        if (seq > cursorOf(agent)) sp.edit().putLong("cursor_$agent", seq).apply()
+    }
 
     val configured: Boolean get() = token.isNotBlank()
 

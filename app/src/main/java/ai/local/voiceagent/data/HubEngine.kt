@@ -370,6 +370,13 @@ class HubEngine(
     private suspend fun onReply(agentId: String, name: String?, replyCtx: String?, text: String) {
         if (text.isBlank()) return
         val at = System.currentTimeMillis()
+        // hub 重连补投时会把同一条答案再发一次，按 replyCtx 去重，不然会话里会重复两条
+        if (!replyCtx.isNullOrBlank() && db.messageDao().countAgentMsg(replyCtx) > 0) {
+            sessionOf(agentId, name)?.let { s ->
+                db.sessionDao().setStatus(s.id, if (viewingSessionId == s.id) STATUS_IDLE else STATUS_WAITING)
+            }
+            return
+        }
         val s = sessionOf(agentId, name, create = true) ?: return
         db.messageDao().insert(
             MessageEntity(sessionId = s.id, role = ROLE_AGENT, text = text, at = at, msgId = replyCtx)
@@ -644,8 +651,9 @@ class HubEngine(
     /**
      * 对话模式：发一句并等这条会话的下一条回答。
      * 必须先挂监听再发 —— events 是 replay=0 的 SharedFlow，发完再订阅会漏掉快速回复。
+     * 超时给到 10 分钟：让长任务有说完的机会；真超时了也不丢——答案回来时会走 SSE 补投入库。
      */
-    suspend fun askAndWait(sessionId: Long, text: String, timeoutMs: Long = 120_000): String? =
+    suspend fun askAndWait(sessionId: Long, text: String, timeoutMs: Long = 600_000): String? =
         withContext(Dispatchers.IO) {
             val s = db.sessionDao().get(sessionId) ?: return@withContext null
             val agentId = s.agentId

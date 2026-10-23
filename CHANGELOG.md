@@ -2,6 +2,23 @@
 
 All dates are local; versions follow `MAJOR.MINOR.PATCH`.
 
+## 1.0.5 — 2026-10-23
+
+Answers that arrive while the phone is disconnected are no longer lost.
+
+- **The hub keeps a durable outbox** of completed events (done / push / cards / buttons /
+  attachments) per agent — 200 events, 6 hours. If nobody is subscribed when the agent finishes,
+  the event waits instead of disappearing.
+- **SSE reconnects with a cursor.** Every durable event carries an `id:` (a monotonic sequence);
+  the app stores the highest one per agent and reconnects with `?since=<seq>`, so the hub replays
+  exactly what was missed. Fresh installs (no cursor) do not get a replay, so old messages are never
+  resurrected — and a session you deleted stays deleted.
+- **The app de-duplicates by `replyCtx`** when it stores an answer, so a replayed event can never
+  produce a second copy of the same reply.
+- **Pending-reply TTL 5 min → 30 min**, and the in-call wait for an answer 2 min → 10 min: long
+  tasks now get to finish and answer instead of being reported as failures.
+- `/health` reports `outboxSeq` and the per-agent outbox depth.
+
 ## 1.0.4 — 2026-10-23
 
 Clean up the sessions you no longer need.

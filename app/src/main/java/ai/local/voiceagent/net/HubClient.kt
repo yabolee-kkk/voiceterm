@@ -225,7 +225,10 @@ class HubClient(private val prefs: Prefs) {
         while (currentCoroutineContext().isActive) {
             emit(HubEvent.Conn(agentId, ConnState.CONNECTING))
             try {
-                val request = req("/v1/sessions/${enc(agentId)}/events")
+                // 带着游标重连：hub 会把断线期间完成的事件补投回来
+                val since = prefs.cursorOf(agentId)
+                val path = "/v1/sessions/${enc(agentId)}/events" + if (since > 0) "?since=$since" else ""
+                val request = req(path)
                     .get()
                     .header("Accept", "text/event-stream")
                     .build()
@@ -237,6 +240,7 @@ class HubClient(private val prefs: Prefs) {
                     emit(HubEvent.Conn(agentId, ConnState.OPEN))
                     val src = body.source()
                     var event = ""
+                    var seq = 0L
                     val data = StringBuilder()
                     while (true) {
                         val line = src.readUtf8Line() ?: break
@@ -245,10 +249,13 @@ class HubClient(private val prefs: Prefs) {
                                 if (data.isNotEmpty()) {
                                     parse(agentId, event, data.toString())?.let { emit(it) }
                                 }
+                                if (seq > 0) prefs.setCursor(agentId, seq)   // 游标只往前挪
                                 event = ""
+                                seq = 0L
                                 data.setLength(0)
                             }
                             line.startsWith(":") -> Unit          // 心跳注释
+                            line.startsWith("id:") -> seq = line.substring(3).trim().toLongOrNull() ?: 0L
                             line.startsWith("event:") -> event = line.substring(6).trim()
                             line.startsWith("data:") -> {
                                 if (data.isNotEmpty()) data.append('\n')

@@ -59,6 +59,10 @@ interface MessageDao {
     @Query("UPDATE messages SET msgId = :msgId WHERE id = :id")
     suspend fun setMsgId(id: Long, msgId: String)
 
+    /** 同一条回复是否已经入库：断线重投时用来去重，避免同一条答案落两次 */
+    @Query("SELECT COUNT(*) FROM messages WHERE msgId = :msgId AND role = 'agent'")
+    suspend fun countAgentMsg(msgId: String): Int
+
     /** 这条回复是不是「我这台手机发出去的那条消息」引来的（多机同上下文时用来决定要不要响铃） */
     @Query("SELECT COUNT(*) FROM messages WHERE msgId = :msgId AND role = 'user'")
     suspend fun countMyMsg(msgId: String): Int
