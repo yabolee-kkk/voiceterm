@@ -60,6 +60,13 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 
 /* ============================ 首页：只有 Agent 列表 ============================ */
 
@@ -250,7 +257,7 @@ private fun AgentRow(
 class AgentSessionsViewModel(
     private val agentId: String,
     private val engine: HubEngine,
-    db: AppDatabase,
+    private val db: AppDatabase,
 ) : ViewModel() {
 
     val sessions: StateFlow<List<SessionEntity>> = db.sessionDao().observeByAgent(agentId)
@@ -263,6 +270,14 @@ class AgentSessionsViewModel(
         viewModelScope.launch {
             val id = engine.newSession(agentId)
             onCreated(id)
+        }
+    }
+
+    /** 删除一条会话：先清消息再删会话本身（表间没有外键级联） */
+    fun delete(session: SessionEntity) {
+        viewModelScope.launch {
+            db.messageDao().deleteBySession(session.id)
+            db.sessionDao().delete(session.id)
         }
     }
 
@@ -287,6 +302,7 @@ fun AgentSessionsScreen(
     val sessions by vm.sessions.collectAsStateWithLifecycle()
     val conn by vm.conn.collectAsStateWithLifecycle()
     val configured = App.prefs.configured
+    var pendingDelete by remember { mutableStateOf<SessionEntity?>(null) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -351,7 +367,7 @@ fun AgentSessionsScreen(
                 }
             } else {
                 Text(
-                    "历史会话 ${sessions.size} 条",
+                    "历史会话 ${sessions.size} 条 · 长按可删除",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 16.dp, top = 6.dp, bottom = 2.dp),
@@ -362,11 +378,36 @@ fun AgentSessionsScreen(
                             session = s,
                             conn = conn[s.agentId],
                             onClick = { onOpen(s.id) },
+                            onLongClick = { pendingDelete = s },
                         )
                     }
                 }
             }
         }
+    }
+
+    // 删除确认：只删本地会话与聊天记录，不动 Agent 那边的上下文
+    pendingDelete?.let { target ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text("删除这条会话？") },
+            text = {
+                Text(
+                    "「${target.title.ifBlank { "新会话" }}」和它的聊天记录都会被删掉，不能恢复。" +
+                        "\n（只删手机本地这份，不影响 Agent 服务端）",
+                    fontSize = 13.sp,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.delete(target)
+                    pendingDelete = null
+                }) { Text("删除", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = null }) { Text("取消") }
+            },
+        )
     }
 }
 
@@ -412,7 +453,13 @@ private fun Banner(text: String, error: Boolean) {
 }
 
 @Composable
-private fun SessionRow(session: SessionEntity, conn: ConnState?, onClick: () -> Unit) {
+@OptIn(ExperimentalFoundationApi::class)
+private fun SessionRow(
+    session: SessionEntity,
+    conn: ConnState?,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit = {},
+) {
     val (statusText, statusColor) = when {
         conn != ConnState.OPEN -> "离线" to MaterialTheme.colorScheme.onSurfaceVariant
         session.status == STATUS_RUNNING -> "运行中" to MaterialTheme.colorScheme.primary
@@ -424,7 +471,7 @@ private fun SessionRow(session: SessionEntity, conn: ConnState?, onClick: () -> 
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 4.dp)
-            .clickable(onClick = onClick),
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {

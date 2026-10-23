@@ -2,6 +2,14 @@
 
 All dates are local; versions follow `MAJOR.MINOR.PATCH`.
 
+## 1.0.4 — 2026-10-23
+
+Clean up the sessions you no longer need.
+
+- **Long-press a session to delete it** (the list header now says so). A confirm dialog names the
+  session and warns that the local chat history goes with it — the agent's own context on the
+  server side is not touched. Deleting removes the messages first, then the session row.
+
 ## 1.0.3 — 2026-10-23
 
 Markdown that is actually readable on a phone.

@@ -42,6 +42,7 @@ interface SessionDao {
     @Query("UPDATE sessions SET unread = 0 WHERE id = :id")
     suspend fun clearUnread(id: Long)
 
+    /** 删会话（消息由 MessageDao.deleteBySession 一起清，表间没有外键级联） */
     @Query("DELETE FROM sessions WHERE id = :id")
     suspend fun delete(id: Long)
 }
