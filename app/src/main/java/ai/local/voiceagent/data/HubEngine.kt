@@ -154,7 +154,13 @@ class HubEngine(
         synchronized(subLock) {
             if (subs[agentId]?.isActive == true) return
             subs[agentId] = scope.launch {
-                client.events(agentId).collect { handle(it) }
+                client.events(agentId).collect {
+                    // 一个事件处理失败（比如入库撞约束）不能让整条订阅死掉，
+                    // 否则后面这个 Agent 的所有消息都收不到，且界面上毫无痕迹
+                    runCatching { handle(it) }.onFailure { ex ->
+                        android.util.Log.e("HubEngine", "handle ${it::class.simpleName} 失败", ex)
+                    }
+                }
             }
         }
     }
@@ -370,8 +376,9 @@ class HubEngine(
     private suspend fun onReply(agentId: String, name: String?, replyCtx: String?, text: String) {
         if (text.isBlank()) return
         val at = System.currentTimeMillis()
-        // hub 重连补投时会把同一条答案再发一次，按 replyCtx 去重，不然会话里会重复两条
-        if (!replyCtx.isNullOrBlank() && db.messageDao().countAgentMsg(replyCtx) > 0) {
+        // hub 重连补投时会把同一条答案再发一次：只有 replyCtx 和文本都相同才算重复，
+        // 否则同一个 replyCtx 下的第二条（正文）会被第一条（提示）挡掉
+        if (!replyCtx.isNullOrBlank() && db.messageDao().countAgentText(replyCtx, text) > 0) {
             sessionOf(agentId, name)?.let { s ->
                 db.sessionDao().setStatus(s.id, if (viewingSessionId == s.id) STATUS_IDLE else STATUS_WAITING)
             }
