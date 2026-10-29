@@ -77,7 +77,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 value = base,
                 onValueChange = { base = it },
                 label = { Text("服务地址") },
-                placeholder = { Text("http://192.0.2.10:8097") },
+                placeholder = { Text("http://192.168.1.18:8097") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -86,7 +86,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 value = pub,
                 onValueChange = { pub = it },
                 label = { Text("公网地址（可留空）") },
-                placeholder = { Text("https://hub.example.com") },
+                placeholder = { Text("https://voice.borong.de5.net") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -149,7 +149,11 @@ fun SettingsScreen(onBack: () -> Unit) {
                 )
             }
             Spacer(Modifier.height(22.dp))
-            Text("当前版本 1.0.1", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                "当前版本 ${ai.local.voiceagent.BuildConfig.VERSION_NAME}",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
