@@ -9,6 +9,7 @@ import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
@@ -65,6 +66,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusRequester
@@ -868,6 +870,10 @@ fun ChatScreen(sessionId: Long, onBack: () -> Unit) {
     val handler = remember { android.os.Handler(android.os.Looper.getMainLooper()) }
     val pendingFiles by vm.pendingFiles.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
+    // 调试用：adb broadcast 注入一段「假的流式进度」，用来验收滚动跟随与折叠行为。
+    // 只有 debug 包会响应，正式包没有出口。
+    var debugStream by remember { mutableStateOf<String?>(null) }
+    val debugScope = androidx.compose.runtime.rememberCoroutineScope()
     var input by remember { mutableStateOf("") }
     var inputFromVoice by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
@@ -964,11 +970,37 @@ fun ChatScreen(sessionId: Long, onBack: () -> Unit) {
             android.content.IntentFilter("ai.local.voiceagent.DEBUG_PICK_FILES"),
             ContextCompat.RECEIVER_EXPORTED,
         )
+        val streamRecv = object : android.content.BroadcastReceiver() {
+            override fun onReceive(c: android.content.Context?, i: android.content.Intent?) {
+                if (!ai.local.voiceagent.BuildConfig.DEBUG) return
+                val lines = i?.getIntExtra("lines", 40) ?: 40
+                val gap = i?.getLongExtra("gapMs", 150L) ?: 150L
+                debugScope.launch {
+                    debugStream = ""
+                    for (n in 1..lines) {
+                        debugStream = buildString {
+                            append("⏳ Progress\n")
+                            for (k in 1..n) append("🔧 工具 #$k: Bash\n")
+                            append("第 $n 段：这是流式追加的进度文本，用来验证屏幕会不会自己往上拱。")
+                        }
+                        kotlinx.coroutines.delay(gap)
+                    }
+                    kotlinx.coroutines.delay(1500)
+                    debugStream = null
+                }
+            }
+        }
+        ContextCompat.registerReceiver(
+            ctx, streamRecv,
+            android.content.IntentFilter("ai.local.voiceagent.DEBUG_INJECT_STREAM"),
+            ContextCompat.RECEIVER_EXPORTED,
+        )
         onDispose {
             try { ctx.unregisterReceiver(recv) } catch (_: Exception) {}
             try { ctx.unregisterReceiver(fileRecv) } catch (_: Exception) {}
             try { ctx.unregisterReceiver(pickRecv) } catch (_: Exception) {}
             try { ctx.unregisterReceiver(attachRecv) } catch (_: Exception) {}
+            try { ctx.unregisterReceiver(streamRecv) } catch (_: Exception) {}
         }
     }
 
@@ -987,7 +1019,7 @@ fun ChatScreen(sessionId: Long, onBack: () -> Unit) {
         onDispose { vm.detach() }
     }
 
-    val total = ui.messages.size + if (ui.streaming != null) 1 else 0
+    val total = ui.messages.size + if (ui.streaming != null || debugStream != null) 1 else 0
 
     // ---- 滚动跟随（这一版改的就是这里）----
     // 旧写法：每来一段流式文本就 animateScrollToItem(last)，且无条件执行：
@@ -1003,10 +1035,21 @@ fun ChatScreen(sessionId: Long, onBack: () -> Unit) {
             if (!scrolling) follow = !listState.canScrollForward
         }
     }
-    LaunchedEffect(total, ui.streaming?.length, follow, forceFollow) {
+    LaunchedEffect(total, ui.streaming?.length, debugStream?.length, follow, forceFollow) {
         if (!follow) return@LaunchedEffect
+        // 等新内容完成测量，再决定滚多少
+        withFrameNanos { }
         val last = listState.layoutInfo.totalItemsCount - 1
-        if (last >= 0) listState.scrollToItem(last)
+        if (last < 0) return@LaunchedEffect
+        // scrollToItem 只把这条的顶边对齐视口顶 —— 最后一条比一屏还高时，
+        // 新追加的文字就落在视口下面（用户看到的“藏在屏幕下角”）。先把它带进来：
+        listState.scrollToItem(last)
+        withFrameNanos { }
+        // 再把视口下方还藏着的那部分补滚上，最终停在真正的底部
+        val info = listState.layoutInfo
+        val vi = info.visibleItemsInfo.firstOrNull { it.index == last } ?: return@LaunchedEffect
+        val hidden = (vi.offset + vi.size) - info.viewportEndOffset
+        if (hidden > 0) listState.scrollBy(hidden.toFloat())
     }
 
     // 松手之后：把最终转写填进输入框（可改），同时出现「取消 / ✓ / 发语音条」这条栏
@@ -1280,12 +1323,13 @@ fun ChatScreen(sessionId: Long, onBack: () -> Unit) {
                     MessageRow(
                         msg = m,
                         playing = voice.playingId == m.id,
+                        isLast = i == ui.messages.lastIndex,
                         onAction = { action -> vm.sendCardAction(action, m.replyCtx) },
                         onSpeak = { vm.speak(m.id, m.text) },
                         onPlayVoice = { file -> vm.playVoice(m.id, file) },
                     )
                 }
-                ui.streaming?.let { text ->
+                (ui.streaming ?: debugStream)?.let { text ->
                     item { AgentStreamingBubble(text.ifEmpty { "…" }) }
                 }
                 item { Spacer(Modifier.height(8.dp)) }
@@ -1395,6 +1439,7 @@ private fun speechBubblePath(w: Float, h: Float, radius: Float, tailW: Float, ta
 private fun MessageRow(
     msg: MessageEntity,
     playing: Boolean,
+    isLast: Boolean = false,
     onAction: (String) -> Unit,
     onSpeak: () -> Unit,
     onPlayVoice: (String) -> Unit,
@@ -1446,7 +1491,7 @@ private fun MessageRow(
         }
         KIND_IMAGE, KIND_FILE -> AttachmentView(msg.kind, msg.payload ?: "{}")
         else -> Column {
-            AgentBubble(msg.text)
+            AgentBubble(msg.text, msg.id, liveDefault = isLast)
             SpeakRow(playing = playing, onClick = onSpeak)
         }
     }
@@ -1698,14 +1743,14 @@ private fun UserBubble(text: String, fromVoice: Boolean = false) {
 }
 
 @Composable
-private fun AgentBubble(text: String) {
+private fun AgentBubble(text: String, foldKey: Any, liveDefault: Boolean = false) {
     Box(
         Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(14.dp))
             .padding(horizontal = 12.dp, vertical = 9.dp)
     ) {
-        AgentContent(text)
+        AgentContent(text, foldKey, liveDefault)
     }
 }
 
@@ -1720,7 +1765,8 @@ private fun AgentStreamingBubble(text: String) {
                 .padding(horizontal = 12.dp, vertical = 9.dp)
         ) {
             Column {
-                AgentContent(text)
+                // 正在跑的这条始终展开：用户要看着它长，而不是先点“展开”
+                AgentContent(text, foldKey = "stream", liveDefault = true)
                 Spacer(Modifier.height(4.dp))
                 CircularProgressIndicator(
                     modifier = Modifier.height(12.dp).widthIn(max = 12.dp),
@@ -1738,16 +1784,18 @@ private fun AgentStreamingBubble(text: String) {
  * 不折叠就会刷屏；cc-connect 的 bridge 协议本身没有独立的 tool 帧（已确认）。
  */
 @Composable
-private fun AgentContent(text: String) {
-    if (isProgressSnapshot(text)) ToolFold(text) else MarkdownText(text)
+private fun AgentContent(text: String, foldKey: Any, liveDefault: Boolean = false) {
+    if (isProgressSnapshot(text)) ToolFold(text, foldKey, liveDefault) else MarkdownText(text)
 }
 
 private fun isProgressSnapshot(text: String): Boolean =
     text.contains("⏳") || Regex("工具\\s*#\\d+").containsMatchIn(text)
 
 @Composable
-private fun ToolFold(text: String) {
-    var expanded by remember(text) { mutableStateOf(false) }
+private fun ToolFold(text: String, foldKey: Any, liveDefault: Boolean) {
+    // 原来 remember(text)：流式每追加一段文本 key 就变，expanded 被重置回 false
+    // → 展开看两眼又自己折起来。改成按消息身份记，默认值只在首次出现时生效。
+    var expanded by remember(foldKey) { mutableStateOf(liveDefault) }
     val tools = remember(text) {
         Regex("工具\\s*#\\d+:\\s*([\\w./-]+)").findAll(text).map { it.groupValues[1] }.distinct().toList()
     }
