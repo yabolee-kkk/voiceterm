@@ -3,6 +3,7 @@ package ai.local.voiceagent.ui.settings
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -72,7 +73,12 @@ fun SettingsScreen(onBack: () -> Unit) {
             )
         },
     ) { pad ->
-        Column(Modifier.padding(pad).fillMaxSize().padding(16.dp)) {
+        // 小屏（小米 6 这种 1920 高的）上这一列会超出一屏，版本号那行被切掉且滑不动
+        Column(
+            Modifier.padding(pad).fillMaxSize()
+                .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                .padding(16.dp)
+        ) {
             OutlinedTextField(
                 value = base,
                 onValueChange = { base = it },

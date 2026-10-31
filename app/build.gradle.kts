@@ -12,8 +12,8 @@ android {
         applicationId = "ai.local.voiceagent"
         minSdk = 26
         targetSdk = 34
-        versionCode = 108
-        versionName = "1.0.8"
+        versionCode = 109
+        versionName = "1.0.9"
         // 服务地址只给默认值；令牌一律不注入构建产物（见 docs/04 §4 安全红线）
         buildConfigField("String", "DEFAULT_BASE_URL", "\"http://192.168.1.18:8097\"")
     }
